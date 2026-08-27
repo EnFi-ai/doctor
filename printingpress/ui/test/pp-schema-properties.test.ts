@@ -327,6 +327,62 @@ describe('pp-schema-properties allOf', () => {
         expect(parseInt(compactWidth, 10)).toBeGreaterThan(240);
     });
 
+    it('renders sibling properties alongside a oneOf constraint', async () => {
+        // oneOf constrains the parent, it does not replace its properties.
+        const schema = {
+            type: 'object',
+            properties: {
+                name: {type: 'string'},
+                kind: {type: 'string', enum: ['entities', 'deals']},
+                entity_ids: {type: 'array', items: {type: 'string'}},
+                deal_ids: {type: 'array', items: {type: 'string'}},
+            },
+            required: ['name', 'kind'],
+            oneOf: [
+                {required: ['entity_ids'], properties: {kind: {const: 'entities'}}},
+                {required: ['deal_ids'], properties: {kind: {const: 'deals'}}},
+            ],
+        };
+        const el = create(JSON.stringify(schema));
+        await el.updateComplete;
+
+        const names = Array.from(el.shadowRoot?.querySelectorAll('.prop-name') ?? [])
+            .map((node) => node.textContent?.trim());
+        expect(names).toEqual(expect.arrayContaining(['name', 'kind', 'entity_ids', 'deal_ids']));
+        expect(el.shadowRoot?.querySelector('.oneof-property')).toBeTruthy();
+    });
+
+    it('renders sibling properties alongside an anyOf constraint', async () => {
+        const schema = {
+            type: 'object',
+            properties: {email: {type: 'string'}, phone: {type: 'string'}},
+            anyOf: [{required: ['email']}, {required: ['phone']}],
+        };
+        const el = create(JSON.stringify(schema));
+        await el.updateComplete;
+
+        const names = Array.from(el.shadowRoot?.querySelectorAll('.prop-name') ?? [])
+            .map((node) => node.textContent?.trim());
+        expect(names).toEqual(expect.arrayContaining(['email', 'phone']));
+        expect(el.shadowRoot?.querySelector('.oneof-property')).toBeTruthy();
+    });
+
+    it('renders only the union when a oneOf has no sibling properties', async () => {
+        const schema = {
+            oneOf: [
+                {title: 'card', type: 'object', properties: {brand: {type: 'string'}}},
+                {title: 'bank', type: 'object', properties: {bank_name: {type: 'string'}}},
+            ],
+        };
+        const el = create(JSON.stringify(schema));
+        await el.updateComplete;
+
+        expect(el.shadowRoot?.querySelector('.oneof-property')).toBeTruthy();
+        const blocks = Array.from(el.shadowRoot?.children ?? [])
+            .filter((node) => node.tagName !== 'STYLE');
+        expect(blocks.map((node) => node.className)).toEqual(['oneof-property']);
+    });
+
     it('keeps vertical polymorphic tabs for short constrained layouts when they fit', async () => {
         const el = create(JSON.stringify({
             oneOf: [

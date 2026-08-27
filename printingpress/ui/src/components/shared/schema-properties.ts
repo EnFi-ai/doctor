@@ -546,17 +546,31 @@ export class PpSchemaProperties extends LitElement {
             return this.renderComposition(target);
         }
 
+        const properties = target.properties || {};
+        const required = new Set<string>(target.required || []);
+        const propEntries = Object.entries(properties);
+
+        // `oneOf`/`anyOf` constrain a schema that may also declare its own
+        // `properties`; they do not replace them. `allOf` already merges the parent
+        // in through collectCompositionData, so this keeps the three consistent.
         if (target.oneOf && Array.isArray(target.oneOf)) {
-            return this.renderOneOf(target.oneOf, 'ONE OF', undefined, undefined, 'polymorphic', '$.oneOf');
+            const union = this.renderOneOf(target.oneOf, 'ONE OF', undefined, undefined, 'polymorphic', '$.oneOf');
+            if (!propEntries.length) return union;
+            return html`
+                ${this.renderPropertyTable(properties, required)}
+                ${union}
+            `;
         }
 
         if (target.anyOf && Array.isArray(target.anyOf)) {
-            return this.renderOneOf(target.anyOf, 'ANY OF', undefined, undefined, 'polymorphic', '$.anyOf');
+            const union = this.renderOneOf(target.anyOf, 'ANY OF', undefined, undefined, 'polymorphic', '$.anyOf');
+            if (!propEntries.length) return union;
+            return html`
+                ${this.renderPropertyTable(properties, required)}
+                ${union}
+            `;
         }
 
-        const properties = target.properties || {};
-        const required = new Set(target.required || []);
-        const propEntries = Object.entries(properties);
         if (!propEntries.length) {
             const type = deriveSchemaType(target);
             if (!type && !target.description) return nothing;

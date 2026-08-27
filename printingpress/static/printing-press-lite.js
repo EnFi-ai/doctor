@@ -7257,7 +7257,13 @@ Please report this to https://github.com/markedjs/marked.`,e){let e=`<p>An error
             `}let n=new Set(e.required||[]),r=Tl(e);return S`
             ${e.description?X(e.description,{className:`oneof-option-desc pp-markdown`}):C}
             ${e.properties?this.renderPropertyTable(e.properties,n,`${t}.properties`):r?S`<div class="oneof-option-scalar"><span class="prop-type">${r}</span>${Gu(e,{labelSuffix:`:`})}</div>`:C}
-        `}render(){if(!this.schema)return C;let e=this.schema.type===`array`&&(this.schema.items?.properties||this.schema.items?.allOf||this.schema.items?.oneOf||this.schema.items?.anyOf)?this.schema.items:this.schema,t=this.resolveRenderableTarget(e);if(t.allOf&&Array.isArray(t.allOf))return this.renderComposition(t);if(t.oneOf&&Array.isArray(t.oneOf))return this.renderOneOf(t.oneOf,`ONE OF`,void 0,void 0,`polymorphic`,`$.oneOf`);if(t.anyOf&&Array.isArray(t.anyOf))return this.renderOneOf(t.anyOf,`ANY OF`,void 0,void 0,`polymorphic`,`$.anyOf`);let n=t.properties||{},r=new Set(t.required||[]);if(!Object.entries(n).length){let e=Tl(t);return!e&&!t.description?C:S`
+        `}render(){if(!this.schema)return C;let e=this.schema.type===`array`&&(this.schema.items?.properties||this.schema.items?.allOf||this.schema.items?.oneOf||this.schema.items?.anyOf)?this.schema.items:this.schema,t=this.resolveRenderableTarget(e);if(t.allOf&&Array.isArray(t.allOf))return this.renderComposition(t);let n=t.properties||{},r=new Set(t.required||[]),i=Object.entries(n);if(t.oneOf&&Array.isArray(t.oneOf)){let e=this.renderOneOf(t.oneOf,`ONE OF`,void 0,void 0,`polymorphic`,`$.oneOf`);return i.length?S`
+                ${this.renderPropertyTable(n,r)}
+                ${e}
+            `:e}if(t.anyOf&&Array.isArray(t.anyOf)){let e=this.renderOneOf(t.anyOf,`ANY OF`,void 0,void 0,`polymorphic`,`$.anyOf`);return i.length?S`
+                ${this.renderPropertyTable(n,r)}
+                ${e}
+            `:e}if(!i.length){let e=Tl(t);return!e&&!t.description?C:S`
                 <div class="property scalar">
                     <div class="prop-type-col">
                         ${e?S`<span class="prop-type">${e}</span>`:C}
