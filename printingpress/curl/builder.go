@@ -289,7 +289,13 @@ func curlParameterValue(parameter *ppmodel.ParameterInfo) string {
 	if value, ok := firstScalarExample(parameter.Examples); ok {
 		return value
 	}
+	if value, ok := scalarFromJSON(parameter.Example); ok {
+		return value
+	}
 	if value, ok := scalarFromSchemaField(parameter.SchemaJSON, "example"); ok {
+		return value
+	}
+	if value, ok := firstSchemaExample(parameter.SchemaJSON); ok {
 		return value
 	}
 	if value, ok := scalarFromSchemaField(parameter.SchemaJSON, "default"); ok {
@@ -336,6 +342,42 @@ func scalarFromSchemaField(schemaJSON, field string) (string, bool) {
 		return "", false
 	}
 	return stringifyScalar(value)
+}
+
+// A parameter's own `example` is a bare JSON scalar rather than a schema object,
+// so it cannot be read through scalarFromSchemaField.
+func scalarFromJSON(raw string) (string, bool) {
+	if raw == "" {
+		return "", false
+	}
+	var value any
+	if json.Unmarshal([]byte(raw), &value) != nil {
+		return "", false
+	}
+	return stringifyScalar(value)
+}
+
+// JSON Schema 2020-12 spells this `examples` and makes it an array; OpenAPI 3.0
+// spelled it `example` and made it a scalar. A 3.1 document may carry either.
+func firstSchemaExample(schemaJSON string) (string, bool) {
+	var schema map[string]any
+	if schemaJSON == "" || json.Unmarshal([]byte(schemaJSON), &schema) != nil {
+		return "", false
+	}
+	rawExamples, ok := schema["examples"].([]any)
+	if !ok || len(rawExamples) == 0 {
+		return "", false
+	}
+	first := rawExamples[0]
+	// An array-typed parameter's example is itself an array. A query string
+	// carries one value per occurrence, so the first element is what to show.
+	if items, isArray := first.([]any); isArray {
+		if len(items) == 0 {
+			return "", false
+		}
+		first = items[0]
+	}
+	return stringifyScalar(first)
 }
 
 func firstEnumValue(schemaJSON string) (string, bool) {

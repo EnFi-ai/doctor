@@ -426,6 +426,7 @@ type ParameterInfo struct {
 	Deprecated  bool              `json:"deprecated"`
 	SchemaJSON  string            `json:"schemaJson"`
 	MockJSON    string            `json:"mockJson,omitempty"`
+	Example     string            `json:"example,omitempty"`
 	Examples    map[string]string `json:"examples,omitempty"`
 	Ref         *ComponentLink    `json:"ref,omitempty"`
 	RawJSON     string            `json:"rawJson,omitempty"`
