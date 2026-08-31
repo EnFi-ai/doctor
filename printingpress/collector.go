@@ -722,11 +722,14 @@ func (pp *PrintingPress) captureSchemaJSON(schema *highbase.Schema) string {
 			return pp.schemaArtifacts.snapshot(artifact).jsonStr
 		}
 	}
-	jsonBytes, err := schema.MarshalJSON()
-	if err != nil {
-		return ""
+	jsonStr := schemaJSONFromLowNode(schema)
+	if jsonStr == "" {
+		jsonBytes, err := schema.MarshalJSON()
+		if err != nil {
+			return ""
+		}
+		jsonStr = string(jsonBytes)
 	}
-	jsonStr := string(jsonBytes)
 	if pp.schemaArtifacts == nil {
 		return jsonStr
 	}
@@ -1090,7 +1093,7 @@ func (pp *PrintingPress) captureRawData(renderable interface{ Render() ([]byte, 
 		}
 	}
 
-	yamlBytes, err := renderable.Render()
+	yamlBytes, err := renderSourceYAML(renderable)
 	if err != nil {
 		pp.warn("failed to render to YAML", context, err)
 		return
@@ -1804,6 +1807,39 @@ func (pp *PrintingPress) safeGenerateMock(gen *renderer.MockGenerator, mockable 
 		return nil, nil
 	}
 	return mock, nil
+}
+
+// schemaSourceNode returns the parsed source node for a schema, which the
+// high-level model cannot reproduce: it has no representation for a boolean
+// schema, so `false` comes back out of Render and MarshalJSON as `{}` — the
+// opposite assertion. Nil for anything that is not a schema.
+func schemaSourceNode(v any) *yaml.Node {
+	switch s := v.(type) {
+	case *highbase.Schema:
+		if low := s.GoLow(); low != nil {
+			return low.RootNode
+		}
+	case *highbase.SchemaProxy:
+		if low := s.GoLow(); low != nil {
+			return low.GetValueNode()
+		}
+	}
+	return nil
+}
+
+// renderSourceYAML prefers a schema's source node over the high-level model's
+// own Render. See schemaSourceNode for why.
+func renderSourceYAML(renderable interface{ Render() ([]byte, error) }) ([]byte, error) {
+	if node := schemaSourceNode(renderable); node != nil {
+		if b, err := yaml.Marshal(node); err == nil {
+			return b, nil
+		}
+	}
+	return renderable.Render()
+}
+
+func schemaJSONFromLowNode(schema *highbase.Schema) string {
+	return yamlNodeToJSON(schemaSourceNode(schema))
 }
 
 // yamlNodeToJSON converts a *yaml.Node to a JSON string.
