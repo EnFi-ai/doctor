@@ -233,3 +233,60 @@ func TestBuildCurlCommandsHandlesNilInputs(t *testing.T) {
 	require.Len(t, variants, 1)
 	assert.True(t, strings.Contains(variants[0].Command, "https://api.example.com"))
 }
+
+func TestBuildCurlCommandsUsesParameterExample(t *testing.T) {
+	op := &OperationPage{
+		Method: "GET",
+		Path:   "/burgers/{id}",
+		Parameters: []*ParameterInfo{
+			{Name: "id", In: "path", Example: `"abc123"`, SchemaJSON: `{"type":"string"}`},
+		},
+	}
+
+	variants := BuildCurlCommands(op, []*ServerInfo{{URL: "https://api.example.com"}}, nil)
+	require.Len(t, variants, 1)
+	assert.Contains(t, variants[0].Command, "'https://api.example.com/burgers/abc123'")
+}
+
+func TestBuildCurlCommandsUsesSchemaExamplesArray(t *testing.T) {
+	op := &OperationPage{
+		Method: "GET",
+		Path:   "/burgers/{id}",
+		Parameters: []*ParameterInfo{
+			{Name: "id", In: "path", SchemaJSON: `{"type":"string","examples":["abc123"]}`},
+			{Name: "sort", In: "query", SchemaJSON: `{"type":"string","examples":["name"]}`},
+		},
+	}
+
+	variants := BuildCurlCommands(op, []*ServerInfo{{URL: "https://api.example.com"}}, nil)
+	require.Len(t, variants, 1)
+	assert.Contains(t, variants[0].Command, "'https://api.example.com/burgers/abc123?sort=name'")
+}
+
+func TestBuildCurlCommandsPrefersParameterExampleOverSchema(t *testing.T) {
+	op := &OperationPage{
+		Method: "GET",
+		Path:   "/burgers/{id}",
+		Parameters: []*ParameterInfo{
+			{Name: "id", In: "path", Example: `"wins"`, SchemaJSON: `{"type":"string","examples":["loses"]}`},
+		},
+	}
+
+	variants := BuildCurlCommands(op, []*ServerInfo{{URL: "https://api.example.com"}}, nil)
+	require.Len(t, variants, 1)
+	assert.Contains(t, variants[0].Command, "/burgers/wins'")
+}
+
+func TestBuildCurlCommandsUnwrapsArrayParameterExample(t *testing.T) {
+	op := &OperationPage{
+		Method: "GET",
+		Path:   "/burgers",
+		Parameters: []*ParameterInfo{
+			{Name: "tag", In: "query", SchemaJSON: `{"type":"array","items":{"type":"string"},"examples":[["cheese","onion"]]}`},
+		},
+	}
+
+	variants := BuildCurlCommands(op, []*ServerInfo{{URL: "https://api.example.com"}}, nil)
+	require.Len(t, variants, 1)
+	assert.Contains(t, variants[0].Command, "?tag=cheese'")
+}
