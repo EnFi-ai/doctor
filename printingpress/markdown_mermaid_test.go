@@ -27,6 +27,27 @@ func TestRenderMarkdown_MermaidFence(t *testing.T) {
 	assert.Contains(t, result, `<p>After</p>`)
 }
 
+func TestRenderMarkdown_MultipleMermaidFences(t *testing.T) {
+	md := "```mermaid\ngraph TD\nA --> B\n```\n\ntext\n\n" +
+		"```mermaid\nsequenceDiagram\nA->>B: Hi\n```\n\n" +
+		"```mermaid\ngraph LR\nC --> D\n```"
+	result := renderMarkdown(md, false)
+
+	assert.Equal(t, 3, strings.Count(result, `class="pp-mermaid-data"`))
+	assert.Equal(t, 3, strings.Count(result, `<pp-mermaid>`))
+	assert.Equal(t, 3, strings.Count(result, `class="language-mermaid"`))
+	assert.Contains(t, result, "sequenceDiagram")
+	assert.Contains(t, result, "graph LR")
+}
+
+func TestRenderMarkdown_MermaidFenceInsideListItem(t *testing.T) {
+	md := "- item\n\n  ```mermaid\n  graph TD\n  A --> B\n  ```\n\n  ```mermaid\n  graph LR\n  C --> D\n  ```"
+	result := renderMarkdown(md, false)
+
+	assert.Equal(t, 2, strings.Count(result, `class="pp-mermaid-data"`))
+	assert.Contains(t, result, "graph LR")
+}
+
 func TestRenderMarkdown_MermaidFenceCaseAndExtraInfo(t *testing.T) {
 	md := "```MERMAID title=\"flow\"\ngraph TD\nA --> B\n```"
 	result := renderMarkdown(md, false)

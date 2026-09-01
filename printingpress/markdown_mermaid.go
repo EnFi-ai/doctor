@@ -45,8 +45,11 @@ func (e *mermaidExtension) Extend(m goldmark.Markdown) {
 
 type mermaidASTTransformer struct{}
 
+// The walk advances through a node's NextSibling, which RemoveChild nils out,
+// so replacing in place ends the iteration over that parent after one fence.
 func (t *mermaidASTTransformer) Transform(doc *ast.Document, reader text.Reader, pc parser.Context) {
 	source := reader.Source()
+	var fences []*ast.FencedCodeBlock
 	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
@@ -55,18 +58,21 @@ func (t *mermaidASTTransformer) Transform(doc *ast.Document, reader text.Reader,
 		if !ok || !isMermaidFence(block, source) {
 			return ast.WalkContinue, nil
 		}
+		fences = append(fences, block)
+		return ast.WalkSkipChildren, nil
+	})
+	for _, block := range fences {
 		parent := block.Parent()
 		if parent == nil {
-			return ast.WalkSkipChildren, nil
+			continue
 		}
 		body := block.Text(source)
 		if strings.TrimSpace(string(body)) == "" {
 			parent.RemoveChild(parent, block)
-			return ast.WalkSkipChildren, nil
+			continue
 		}
 		parent.ReplaceChild(parent, block, &mermaidBlock{source: append([]byte(nil), body...)})
-		return ast.WalkSkipChildren, nil
-	})
+	}
 }
 
 func isMermaidFence(block *ast.FencedCodeBlock, source []byte) bool {
