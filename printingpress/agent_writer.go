@@ -274,8 +274,14 @@ func writeLLMFullPreamble(ctx llmRenderContext, w io.StringWriter) error {
 	}
 
 	if site.Root != nil && site.Root.Description != "" {
-		if err := writeString(w, "> "+singleLine(site.Root.Description)+"\n\n"); err != nil {
+		lead, body := splitLeadParagraph(site.Root.Description)
+		if err := writeString(w, "> "+singleLine(lead)+"\n\n"); err != nil {
 			return err
+		}
+		if body != "" {
+			if err := writeString(w, body+"\n\n"); err != nil {
+				return err
+			}
 		}
 	}
 	if site.Root != nil && site.Root.Version != "" {
@@ -3337,6 +3343,17 @@ func truncateDesc(desc string, maxLen int) string {
 }
 
 // singleLine replaces newlines with spaces for inline use.
+// The llms.txt convention wants a one-line blockquote under the H1, but a
+// description carrying tables or headings loses them when flattened whole, so
+// only the lead paragraph is quoted and the rest stays real markdown.
+func splitLeadParagraph(s string) (lead, rest string) {
+	s = strings.TrimSpace(strings.ReplaceAll(s, "\r\n", "\n"))
+	if i := strings.Index(s, "\n\n"); i >= 0 {
+		return s[:i], strings.TrimSpace(s[i+2:])
+	}
+	return s, ""
+}
+
 func singleLine(s string) string {
 	s = strings.ReplaceAll(s, "\r\n", " ")
 	s = strings.ReplaceAll(s, "\n", " ")
