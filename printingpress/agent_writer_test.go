@@ -43,6 +43,20 @@ func buildTestSite(t *testing.T, specPath string) *Site {
 	return site
 }
 
+func TestWriteLLMFullPreamble_KeepsStructuredDescription(t *testing.T) {
+	desc := "One line summary.\n\n## Conventions\n\n| Topic | Rule |\n| --- | --- |\n| Field names | snake_case |"
+	site := &Site{Root: &RootPage{Title: "T", Description: desc, Version: "1.0"}}
+
+	var b strings.Builder
+	require.NoError(t, writeLLMFullPreamble(rootLLMRenderContext(site), &b))
+	out := b.String()
+
+	assert.Contains(t, out, "> One line summary.")
+	assert.Contains(t, out, "\n## Conventions\n")
+	assert.Contains(t, out, "\n| Topic | Rule |\n")
+	assert.NotContains(t, out, "> One line summary. ## Conventions")
+}
+
 func TestWriteLLMSite_BurgerShop(t *testing.T) {
 	site := buildTestSite(t, "../test_specs/burgershop.openapi.yaml")
 	outputDir := t.TempDir()
