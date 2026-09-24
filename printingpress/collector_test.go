@@ -1055,6 +1055,28 @@ func TestSchemaRawData_BurgerShop_Integration(t *testing.T) {
 	}
 }
 
+func TestSchemaRawData_Schema_BooleanFalseUsesSourceNode(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Never: false
+`
+	site := pressFromSpec(t, spec)
+
+	schemas := site.Models["schemas"]
+	require.Len(t, schemas, 1)
+	s := schemas[0]
+
+	// The high-level model has no boolean-schema representation, so before the
+	// source-node fix both fields rendered as "{}" — the opposite assertion.
+	assert.Equal(t, "false", strings.TrimSpace(s.RawYAML))
+	assert.Equal(t, "false", strings.TrimSpace(s.SchemaJSON))
+}
+
 func TestComputeSchemaStartLine(t *testing.T) {
 	tests := []struct {
 		name     string
