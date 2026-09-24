@@ -544,6 +544,9 @@ func (pp *PrintingPress) collectParameters(params []*v3.Parameter, piOrigin *bun
 		if isComplexSchema(paramSchema) {
 			pi.MockJSON = pp.generateMock(p.Value)
 		}
+		if p.Value.Example != nil {
+			pi.Example = yamlNodeToJSON(p.Value.Example)
+		}
 		// Collect named examples
 		if p.Examples != nil {
 			pi.Examples = make(map[string]string)
